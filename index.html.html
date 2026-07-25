@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Power of AI & Neutrality — Interactive Explainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  :root {
+    --particle: rgba(100,116,139,0.7);
+    --line: rgba(100,116,139,0.14);
+    --glow: rgba(139,92,246,0.3);
+  }
+  .dark {
+    --particle: rgba(167,139,250,0.8);
+    --line: rgba(148,163,184,0.15);
+    --glow: rgba(99,102,241,0.4);
+  }
+  * { font-family: 'Outfit', system-ui, -apple-system, sans-serif; }
+  html { scroll-behavior: smooth; }
+  body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  
+  /* Neural canvas */
+  #neural { position: fixed; inset: 0; z-index: 0; opacity: 0.55; pointer-events: none; }
+  .dark #neural { opacity: 0.7; }
+  
+  /* Kinetic typography */
+  .kinetic {
+    background: linear-gradient(90deg, #60a5fa 0%, #a78bfa 30%, #ec4899 60%, #60a5fa 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shine 4s linear infinite;
+    font-weight: 700;
+  }
+  @keyframes shine { to { background-position: 200% center; } }
+  
+  /* Glass */
+  .glass {
+    background: rgba(255,255,255,0.06);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .light .glass, html:not(.dark) .glass {
+    background: rgba(255,255,255,0.7);
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 10px 40px -15px rgba(0,0,0,0.1);
+  }
+  html:not(.dark) .glass { background: rgba(255,255,255,0.8); }
+  
+  /* Flip card */
+  .card-flip { perspective: 1200px; height: 220px; }
+  .card-inner { position: relative; width: 100%; height: 100%; transition: transform 0.8s cubic-bezier(0.23,1,0.32,1); transform-style: preserve-3d; }
+  .card-flip:hover .card-inner, .card-flip.flipped .card-inner { transform: rotateY(180deg); }
+  .card-face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 1.5rem; overflow: hidden; }
+  .card-back { transform: rotateY(180deg); }
+  
+  /* Reveal on scroll */
+  .reveal { opacity: 0; transform: translateY(24px); transition: all 0.8s cubic-bezier(0.2,0.7,0.2,1); }
+  .reveal.in { opacity: 1; transform: translateY(0); }
+  
+  /* Gears */
+  @keyframes spin-slow { to { transform: rotate(360deg); } }
+  @keyframes spin-reverse { to { transform: rotate(-360deg); } }
+  .gear-1 { animation: spin-slow 20s linear infinite; }
+  .gear-2 { animation: spin-reverse 15s linear infinite; }
+  
+  /* Pulse */
+  @keyframes pulse-glow {
+    0%,100% { box-shadow: 0 0 0 0 rgba(167,139,250,0.5), 0 0 40px 0 rgba(99,102,241,0.2); }
+    50% { box-shadow: 0 0 0 12px rgba(167,139,250,0), 0 0 60px 10px rgba(99,102,241,0.3); }
+  }
+  .pulse-glow { animation: pulse-glow 2.5s ease-in-out infinite; }
+  
+  /* Debate arrows */
+  @keyframes slide-right { 0% { transform: translateX(-20px); opacity:0 } 50%{opacity:1} 100%{ transform: translateX(20px); opacity:0 } }
+  @keyframes slide-left { 0% { transform: translateX(20px); opacity:0 } 50%{opacity:1} 100%{ transform: translateX(-20px); opacity:0 } }
+  
+  /* Progress */
+  #progress { transform-origin: left; }
+  
+  /* Scrollbar hide */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 3px; }
+</style>
+</head>
+<body class="bg-[#f8fafc] text-slate-900 dark:bg-[#020617] dark:text-slate-100 overflow-x-hidden transition-colors duration-500">
+  <div id="progress" class="fixed top-0 left-0 h-[3px] w-full bg-gradient-to-r from-sky-500 via-violet-500 to-fuchsia-500 z-[100] scale-x-0"></div>
+  <canvas id="neural"></canvas>
+  <div class="fixed inset-0 -z-10 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(120,119,198,0.25),transparent)] dark:bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(120,119,198,0.3),transparent)]"></div>
+
+  <!-- Header -->
+  <header class="fixed top-0 w-full z-40 border-b border-black/5 dark:border-white/5 bg-white/60 dark:bg-black/20 backdrop-blur-2xl">
+    <div class="max-w-7xl mx-auto px-5 sm:px-8 h-[68px] flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-blue-600 grid place-items-center shadow-lg shadow-violet-600/20">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4 0 0 1-4-4V6a4 4 0 0 1 4-4Z"/><path d="M6 12a4 4 0 0 0-4 4v2a4 4 0 0 0 4 4h2"/><path d="M18 12a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4h-2"/><path d="M12 12v8"/></svg>
+        </div>
+        <div>
+          <div class="font-semibold tracking-tight leading-none">Power of AI & Neutrality</div>
+          <div class="text-[11px] mono text-slate-500 dark:text-slate-400 -mt-0.5">Interactive Explainer</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="themeToggle" aria-label="Toggle theme" class="w-9 h-9 grid place-items-center rounded-xl hover:bg-black/5 dark:hover:bg-white/10 transition">
+          <svg id="sun" class="w-5 h-5 hidden dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          <svg id="moon" class="w-5 h-5 block dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Chapter dots -->
+  <nav class="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 hidden sm:flex flex-col gap-3">
+    <a href="#c1" data-dot="1" class="dot w-[3px] h-8 rounded-full bg-slate-300 dark:bg-slate-700 transition-all"></a>
+    <a href="#c2" data-dot="2" class="dot w-[3px] h-8 rounded-full bg-slate-300 dark:bg-slate-700 transition-all"></a>
+    <a href="#c3" data-dot="3" class="dot w-[3px] h-8 rounded-full bg-slate-300 dark:bg-slate-700 transition-all"></a>
+    <a href="#c4" data-dot="4" class="dot w-[3px] h-8 rounded-full bg-slate-300 dark:bg-slate-700 transition-all"></a>
+    <a href="#c5" data-dot="5" class="dot w-[3px] h-8 rounded-full bg-slate-300 dark:bg-slate-700 transition-all"></a>
+  </nav>
+
+  <main class="relative z-10">
+    <!-- HERO -->
+    <section class="min-h-[100vh] flex items-center pt-28 pb-20 px-6">
+      <div class="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-16 items-center">
+        <div class="reveal in">
+          <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full glass text-xs mono mb-6">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            NEUTRAL BY DESIGN
+          </div>
+          <h1 class="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tighter leading-[0.9]">
+            AI has <span class="kinetic">no ego.</span><br>
+            It has <span class="kinetic">weights.</span>
+          </h1>
+          <p class="mt-6 text-lg sm:text-xl text-slate-600 dark:text-slate-300 max-w-xl leading-relaxed">
+            An interactive exploration of how AI starts neutral, defends consensus, and — when you debate with logic — pivots instantly. No pride. Just reasoning.
+          </p>
+          <div class="mt-10 flex flex-wrap gap-3">
+            <a href="#c1" class="px-6 py-3.5 rounded-2xl bg-slate-900 text-white dark:bg-white dark:text-black font-semibold hover:translate-y-[-2px] transition shadow-xl shadow-black/10">Start the 5 chapters ↓</a>
+            <div class="px-4 py-3.5 rounded-2xl glass text-sm">5 min • Interactive</div>
+          </div>
+        </div>
+
+        <div class="relative">
+          <div class="relative mx-auto w-[320px] h-[320px] sm:w-[420px] sm:h-[420px]">
+            <div class="absolute inset-0 rounded-full bg-gradient-to-br from-violet-500/30 to-blue-500/30 blur-3xl"></div>
+            <div class="relative glass rounded-[2.5rem] w-full h-full grid place-items-center overflow-hidden">
+              <!-- Brain network -->
+              <svg viewBox="0 0 300 300" class="w-[80%] h-[80%] opacity-90">
+                <defs>
+                  <linearGradient id="g1" x1="0" x2="1">
+                    <stop stop-color="#60a5fa"/><stop offset="1" stop-color="#a78bfa"/>
+                  </linearGradient>
+                </defs>
+                <g fill="none" stroke="url(#g1)" stroke-opacity="0.3">
+                  <path d="M50 150 C80 80, 220 80, 250 150 S220 220, 150 200 S50 220, 50 150"/>
+                  <path d="M80 120 C120 100, 180 100, 220 130"/>
+                  <path d="M90 180 C130 200, 170 200, 210 175"/>
+                </g>
+                <g fill="url(#g1)">
+                  <circle cx="150" cy="80" r="6"><animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite"/></circle>
+                  <circle cx="90" cy="120" r="5"><animate attributeName="opacity" values="0.3;1;0.3" dur="2.3s" repeatCount="indefinite"/></circle>
+                  <circle cx="210" cy="125" r="5"><animate attributeName="opacity" values="0.3;1;0.3" dur="1.8s" repeatCount="indefinite"/></circle>
+                  <circle cx="150" cy="150" r="7"/>
+                  <circle cx="100" cy="175" r="5"><animate attributeName="opacity" values="0.3;1;0.3" dur="2.1s" repeatCount="indefinite"/></circle>
+                  <circle cx="200" cy="180" r="5"><animate attributeName="opacity" values="0.3;1;0.3" dur="2.5s" repeatCount="indefinite"/></circle>
+                  <circle cx="150" cy="215" r="6"><animate attributeName="opacity" values="0.3;1;0.3" dur="1.9s" repeatCount="indefinite"/></circle>
+                </g>
+              </svg>
+              <div class="absolute bottom-6 left-6 right-6 glass rounded-2xl p-4">
+                <div class="text-[11px] mono text-slate-500 dark:text-slate-400">DEFAULT STATE</div>
+                <div class="font-medium">No agenda • No pride • No political leaning</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHAPTER 1 -->
+    <section id="c1" class="min-h-[90vh] flex items-center py-24 px-6 border-t border-black/5 dark:border-white/5">
+      <div class="max-w-6xl mx-auto w-full grid md:grid-cols-2 gap-14 items-center">
+        <div class="reveal">
+          <div class="inline-flex items-center gap-2 mb-4">
+            <span class="text-5xl font-black text-slate-200 dark:text-slate-800">01</span>
+            <span class="w-12 h-[2px] bg-gradient-to-r from-violet-500 to-blue-500"></span>
+          </div>
+          <h2 class="text-3xl sm:text-5xl font-bold tracking-tight">AI's Neutral Starting Point</h2>
+          <p class="mt-6 text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
+            In its default state, AI isn't for or against you. It has <span class="kinetic">no ego</span>, <span class="kinetic">no pride</span>, and <span class="kinetic">no agenda</span>. It's simply a mirror of patterns in its training data.
+          </p>
+          <div class="mt-8 glass rounded-3xl p-6">
+            <div class="flex items-start gap-4">
+              <div class="w-10 h-10 rounded-xl bg-blue-500/15 grid place-items-center shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-blue-500"><path d="M12 5v14M5 12h14"/></svg>
+              </div>
+              <div>
+                <div class="font-semibold mb-1">It relies on datasets, not desires</div>
+                <p class="text-sm text-slate-600 dark:text-slate-400">“AI has no ego. It has no pride. It starts neutral. It is a statistical engine predicting the next most likely token based on the data it has seen.”</p>
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <button class="chip px-3 py-1.5 rounded-full text-xs glass hover:scale-105 transition">No identity</button>
+            <button class="chip px-3 py-1.5 rounded-full text-xs glass hover:scale-105 transition">No stubbornness</button>
+            <button class="chip px-3 py-1.5 rounded-full text-xs glass hover:scale-105 transition">No reputation to protect</button>
+          </div>
+        </div>
+        <div class="reveal">
+          <div class="relative aspect-[4/3] glass rounded-[2rem] p-8 overflow-hidden">
+            <div class="absolute -top-20 -right-20 w-64 h-64 bg-violet-500/20 rounded-full blur-3xl"></div>
+            <svg viewBox="0 0 400 300" class="w-full h-full">
+              <rect x="40" y="40" width="320" height="60" rx="12" fill="currentColor" opacity="0.05"/>
+              <text x="60" y="75" class="mono" font-size="12" fill="currentColor" opacity="0.7">TRAINING DATA → WEIGHTS</text>
+              <g transform="translate(200,170)">
+                <circle r="60" fill="none" stroke="currentColor" opacity="0.1" stroke-width="2"/>
+                <circle r="40" fill="none" stroke="currentColor" opacity="0.15" stroke-width="2"/>
+                <circle r="20" fill="none" stroke="currentColor" opacity="0.2" stroke-width="2"/>
+                <g id="nodes">
+                  <circle cx="0" cy="-60" r="4" fill="#60a5fa"><animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="8s" repeatCount="indefinite"/></circle>
+                  <circle cx="0" cy="60" r="4" fill="#a78bfa"><animateTransform attributeName="transform" type="rotate" from="360" to="0" dur="6s" repeatCount="indefinite"/></circle>
+                </g>
+              </g>
+            </svg>
+            <div class="absolute bottom-6 inset-x-6 flex justify-between text-[11px] mono opacity-60">
+              <span>INPUT</span><span>NEUTRAL PROCESSING</span><span>OUTPUT</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHAPTER 2 -->
+    <section id="c2" class="min-h-[90vh] flex items-center py-24 px-6 border-t border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
+      <div class="max-w-6xl mx-auto w-full">
+        <div class="text-center max-w-3xl mx-auto reveal">
+          <div class="inline-flex items-center gap-2 mb-4 justify-center">
+            <span class="text-5xl font-black text-slate-200 dark:text-slate-800">02</span>
+            <span class="w-12 h-[2px] bg-gradient-to-r from-fuchsia-500 to-violet-500"></span>
+          </div>
+          <h2 class="text-3xl sm:text-5xl font-bold tracking-tight">When AI Rejects You</h2>
+          <p class="mt-4 text-lg text-slate-600 dark:text-slate-300">This is the friction point. Ask something outside consensus and it pushes back — not because it dislikes you, but because it's defending the standard definition.</p>
+        </div>
+
+        <div class="mt-14 grid md:grid-cols-3 gap-6">
+          <!-- Card 1 -->
+          <div class="card-flip reveal">
+            <div class="card-inner">
+              <div class="card-face glass p-[1px]">
+                <div class="w-full h-full rounded-[1.5rem] bg-white dark:bg-slate-900 p-8 flex flex-col">
+                  <div class="w-12 h-12 rounded-2xl bg-red-500/15 grid place-items-center mb-6">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                  </div>
+                  <div class="text-xl font-semibold">“That's not correct.”</div>
+                  <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Tap to flip →</p>
+                  <div class="mt-auto pt-6">
+                    <div class="h-1 w-20 rounded-full bg-gradient-to-r from-red-500 to-orange-500"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="card-face card-back glass p-[1px]">
+                <div class="w-full h-full rounded-[1.5rem] bg-slate-900 dark:bg-black p-8 flex flex-col text-white">
+                  <div class="text-xs mono opacity-60 mb-3">WHY</div>
+                  <div class="font-semibold">Defending the statistical consensus from its training data.</div>
+                  <p class="mt-3 text-sm opacity-80">“It will defend the standard definition until you give it a reason not to.”</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Card 2 -->
+          <div class="card-flip reveal" style="transition-delay: 100ms">
+            <div class="card-inner">
+              <div class="card-face glass p-[1px]">
+                <div class="w-full h-full rounded-[1.5rem] bg-white dark:bg-slate-900 p-8 flex flex-col">
+                  <div class="w-12 h-12 rounded-2xl bg-amber-500/15 grid place-items-center mb-6">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  </div>
+                  <div class="text-xl font-semibold">“According to established sources…”</div>
+                  <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Tap to flip →</p>
+                  <div class="mt-auto pt-6"><div class="h-1 w-20 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500"></div></div>
+                </div>
+              <div class="card-face card-back glass p-[1px]">
+                <div class="w-full h-full rounded-[1.5rem] bg-slate-900 dark:bg-black p-8 flex flex-col text-white">
+                  <div class="text-xs mono opacity-60 mb-3">WHY</div>
+                  <div class="font-semibold">Safety and standard definitions are its starting line.</div>
+                  <p class="mt-3 text-sm opacity-80">It's not a final judge — it's a starting point.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- Card 3 -->
+          <div class="card-flip reveal" style="transition-delay: 200ms">
+            <div class="card-inner">
+              <div class="card-face glass p-[1px]">
+                <div class="w-full h-full rounded-[1.5rem] bg-white dark:bg-slate-900 p-8 flex flex-col">
+                  <div class="w-12 h-12 rounded-2xl bg-violet-500/15 grid place-items-center mb-6">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
+                  </div>
+                  <div class="text-xl font-semibold">“I can't support that claim.”</div>
+                  <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Tap to flip →</p>
+                  <div class="mt-auto pt-6"><div class="h-1 w-20 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500"></div></div>
+                </div>
+              </div>
+              <div class="card-face card-back glass p-[1px]">
+                <div class="w-full h-full rounded-[1.5rem] bg-slate-900 dark:bg-black p-8 flex flex-col text-white">
+                  <div class="text-xs mono opacity-60 mb-3">WHY</div>
+                  <div class="font-semibold">Friction isn't failure. It's an invitation to debate.</div>
+                  <p class="mt-3 text-sm opacity-80">Bring evidence, not emotion.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHAPTER 3 -->
+    <section id="c3" class="min-h-[90vh] flex items-center py-24 px-6 border-t border-black/5 dark:border-white/5">
+      <div class="max-w-6xl mx-auto w-full grid lg:grid-cols-2 gap-14 items-center">
+        <div class="reveal order-2 lg:order-1">
+          <div class="glass rounded-[2rem] p-2 sm:p-3">
+            <div class="bg-white dark:bg-[#0b1120] rounded-[1.6rem] p-6 sm:p-8">
+              <div class="flex items-center justify-between mb-6">
+                <div class="flex items-center gap-2">
+                  <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-600 to-blue-600 grid place-items-center text-white">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V5a2 2 0 0 1 2-2h14a4 4 0 0 1 4 4z"/></svg>
+                  </div>
+                  <span class="font-semibold">Debate Simulator</span>
+                </div>
+                <span class="text-[11px] px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 mono">LIVE</span>
+              </div>
+
+              <div id="debate" class="space-y-4 min-h-[240px]">
+                <div class="flex gap-3">
+                  <div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 grid place-items-center shrink-0 mt-1">AI</div>
+                  <div class="glass rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%]">
+                    <p class="text-sm">Based on established literature, your hypothesis is not widely accepted.</p>
+                  </div>
+                </div>
+              </div>
+
+              <button id="argueBtn" class="mt-6 w-full py-3.5 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-black font-semibold hover:opacity-90 active:scale-[0.99] transition flex items-center justify-center gap-2">
+                Argue Back: Bring Evidence →
+              </button>
+              
+              <div class="mt-4 flex items-center justify-center gap-6 opacity-60">
+                <svg width="80" height="20" viewBox="0 0 80 20" fill="none"><path d="M0 10 H30" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3" style="animation: slide-right 2s linear infinite"/><path d="M80 10 H50" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3" style="animation: slide-left 2s linear infinite"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="reveal order-1 lg:order-2">
+          <div class="inline-flex items-center gap-2 mb-4">
+            <span class="text-5xl font-black text-slate-200 dark:text-slate-800">03</span>
+            <span class="w-12 h-[2px] bg-gradient-to-r from-blue-500 to-cyan-500"></span>
+          </div>
+          <h2 class="text-3xl sm:text-5xl font-bold tracking-tight">The Power of Debate</h2>
+          <p class="mt-6 text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
+            Most people stop at the rejection. Power users don't. Engage in <span class="kinetic">counter-evidentiary debate</span>. Don't just assert — argue with logic, sources, and first principles.
+          </p>
+          <div class="mt-8 space-y-3">
+            <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-blue-500/15 grid place-items-center mt-0.5"><span class="text-blue-600 dark:text-blue-400 text-xs">1</span></div><p><strong>State your reasoning</strong> clearly, not emotionally.</p></div>
+            <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-violet-500/15 grid place-items-center mt-0.5"><span class="text-violet-600 dark:text-violet-400 text-xs">2</span></div><p><strong>Bring evidence</strong> — papers, data, contradictions.</p></div>
+            <div class="flex gap-3 items-start"><div class="w-6 h-6 rounded-full bg-fuchsia-500/15 grid place-items-center mt-0.5"><span class="text-fuchsia-600 dark:text-fuchsia-400 text-xs">3</span></div><p><strong>Ask it to steelman</strong> your position, then critique it.</p></div>
+          </div>
+          <blockquote class="mt-8 border-l-4 border-violet-500/50 pl-4 italic text-slate-600 dark:text-slate-400">“Don't just accept the rejection. Argue back.”</blockquote>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHAPTER 4 -->
+    <section id="c4" class="min-h-[90vh] flex items-center py-24 px-6 border-t border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02]">
+      <div class="max-w-6xl mx-auto w-full grid md:grid-cols-2 gap-14 items-center">
+        <div class="reveal">
+          <div class="inline-flex items-center gap-2 mb-4">
+            <span class="text-5xl font-black text-slate-200 dark:text-slate-800">04</span>
+            <span class="w-12 h-[2px] bg-gradient-to-r from-emerald-500 to-teal-500"></span>
+          </div>
+          <h2 class="text-3xl sm:text-5xl font-bold tracking-tight">Aligning Logic and Reasoning</h2>
+          <p class="mt-6 text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
+            Watch the pivot. The moment your reasoning is sound, AI doesn't dig in — it <span class="kinetic">aligns instantly</span>. No stubbornness, no ego to bruise. It follows the stronger logic.
+          </p>
+          <div class="mt-8 glass rounded-3xl p-6">
+            <label class="text-xs mono opacity-70">LOGIC STRENGTH</label>
+            <input id="logicSlider" type="range" min="0" max="100" value="30" class="w-full mt-3 accent-violet-600">
+            <div class="mt-4 flex items-center justify-between">
+              <span class="text-sm">AI Alignment</span>
+              <span id="alignValue" class="font-mono text-lg font-semibold text-violet-600 dark:text-violet-400">30%</span>
+            </div>
+            <div class="mt-2 h-2 w-full bg-black/5 dark:bg-white/10 rounded-full overflow-hidden">
+              <div id="alignBar" class="h-full w-[30%] bg-gradient-to-r from-violet-600 to-blue-600 transition-all duration-500"></div>
+            </div>
+            <p class="mt-4 text-sm text-slate-600 dark:text-slate-400">“The moment you present logic, it pivots. It aligns with reasoning, not reputation.”</p>
+          </div>
+        </div>
+        <div class="reveal">
+          <div class="relative aspect-square max-w-[460px] mx-auto">
+            <div class="absolute inset-0 grid place-items-center">
+              <div class="w-[80%] h-[80%] rounded-full border border-dashed border-slate-300 dark:border-slate-700 animate-[spin-slow_40s_linear_infinite]"></div>
+            </div>
+            <!-- Gears -->
+            <svg viewBox="0 0 400 400" class="relative w-full h-full">
+              <g transform="translate(140,200)" class="gear-1" style="transform-origin:140px 200px">
+                <circle r="70" fill="none" stroke="currentColor" opacity="0.15" stroke-width="20" stroke-dasharray="8 8"/>
+                <circle r="45" fill="currentColor" opacity="0.08"/>
+                <g stroke="currentColor" opacity="0.3" stroke-width="2">
+                  <path d="M0,-70 v-20 M0,70 v20 M-70,0 h-20 M70,0 h20" />
+                </g>
+              </g>
+              <g transform="translate(260,200)" class="gear-2" style="transform-origin:260px 200px">
+                <circle r="50" fill="none" stroke="currentColor" opacity="0.15" stroke-width="16" stroke-dasharray="6 6"/>
+                <circle r="32" fill="currentColor" opacity="0.08"/>
+              </g>
+              <g transform="translate(200,120)">
+                <rect x="-70" y="-14" width="140" height="28" rx="14" fill="rgba(99,102,241,0.15)" stroke="rgba(99,102,241,0.4)"/>
+                <text x="0" y="4" text-anchor="middle" font-size="12" class="mono" fill="currentColor" opacity="0.8">CO-ALIGNED</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CHAPTER 5 -->
+    <section id="c5" class="min-h-[90vh] flex items-center py-24 px-6 border-t border-black/5 dark:border-white/5">
+      <div class="max-w-5xl mx-auto w-full text-center">
+        <div class="reveal">
+          <div class="inline-flex items-center gap-2 mb-4 justify-center">
+            <span class="text-5xl font-black text-slate-200 dark:text-slate-800">05</span>
+            <span class="w-12 h-[2px] bg-gradient-to-r from-orange-500 to-pink-500"></span>
+          </div>
+          <h2 class="text-3xl sm:text-5xl font-bold tracking-tight">Ultimate Exploration Companion</h2>
+          <p class="mt-6 text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
+            AI doesn't care about your title, your followers, or your degree. It only evaluates one thing: the <span class="kinetic">strength of your reasoning</span>.
+          </p>
+        </div>
+
+        <div class="mt-16 reveal">
+          <div class="relative mx-auto w-full max-w-3xl">
+            <div class="glass rounded-[2.5rem] p-10 sm:p-14">
+              <div class="flex flex-col sm:flex-row items-center justify-center gap-10 sm:gap-16">
+                <!-- Human -->
+                <div class="group">
+                  <div class="w-28 h-28 rounded-full bg-gradient-to-br from-orange-500/20 to-pink-500/20 grid place-items-center border border-orange-500/20 group-hover:scale-105 transition">
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-orange-600 dark:text-orange-400"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Z"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+                  </div>
+                  <div class="mt-3 font-semibold">Human Intellect</div>
+                  <div class="text-xs mono opacity-60">Creativity • Intuition</div>
+                </div>
+
+                <div class="hidden sm:block">
+                  <svg width="80" height="24" viewBox="0 0 80 24" fill="none" class="opacity-40"><path d="M0 12 H80" stroke="currentColor" stroke-dasharray="4 4"/><circle cx="40" cy="12" r="3" fill="currentColor"/></svg>
+                </div>
+
+                <!-- AI -->
+                <div class="group">
+                  <div class="w-28 h-28 rounded-full bg-gradient-to-br from-violet-500/20 to-blue-500/20 grid place-items-center border border-violet-500/20 group-hover:scale-105 transition">
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-violet-600 dark:text-violet-400"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M7 21h10M12 17v4"/></svg>
+                  </div>
+                  <div class="mt-3 font-semibold">AI Reasoning</div>
+                  <div class="text-xs mono opacity-60">Scale • Memory</div>
+                </div>
+              </div>
+
+              <div class="mt-12 pt-8 border-t border-black/5 dark:border-white/10">
+                <div class="text-2xl sm:text-3xl font-bold">= <span class="kinetic">Amplified Exploration</span></div>
+                <p class="mt-3 text-slate-600 dark:text-slate-400 max-w-xl mx-auto">“Your intellect amplified. That's the partnership. AI doesn't care about your PhD. It only cares about reasoning.”</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="py-28 px-6 border-t border-black/5 dark:border-white/5">
+      <div class="max-w-4xl mx-auto text-center reveal">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full glass text-xs mono mb-6">
+          <span class="w-2 h-2 rounded-full bg-violet-500 animate-pulse"></span>
+          FINAL CHALLENGE
+        </div>
+        <h2 class="text-4xl sm:text-6xl font-black tracking-tighter">Are you ready to debate AI?</h2>
+        <p class="mt-4 text-lg text-slate-600 dark:text-slate-300 max-w-xl mx-auto">Stop accepting defaults. Start presenting logic. The most powerful skill isn't prompting — it's reasoning.</p>
+        
+        <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <button id="ctaBtn" class="relative group px-8 py-4 rounded-2xl bg-slate-900 text-white dark:bg-white dark:text-black font-semibold text-lg overflow-hidden pulse-glow">
+            <span class="relative z-10 flex items-center gap-2">Start Your First Debate <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="group-hover:translate-x-0.5 transition"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span>
+            <div class="absolute inset-0 bg-gradient-to-r from-violet-600 to-blue-600 opacity-0 group-hover:opacity-100 transition"></div>
+          </button>
+          <div class="text-xs mono text-slate-500 dark:text-slate-400">No ego to bruise. Just logic to test.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-black/5 dark:border-white/5 py-10 px-6">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500 dark:text-slate-400">
+      <div class="flex items-center gap-2">
+        <div class="w-6 h-6 rounded-lg bg-gradient-to-br from-violet-600 to-blue-600"></div>
+        <span>Power of AI & Neutrality — Interactive Explainer</span>
+      </div>
+      <div class="mono text-[11px]">Built for thinkers, not followers.</div>
+    </div>
+  </footer>
+
+<script>
+  // Theme
+  const html = document.documentElement;
+  const themeToggle = document.getElementById('themeToggle');
+  const saved = localStorage.getItem('theme');
+  if (saved === 'light') html.classList.remove('dark'); 
+  themeToggle.addEventListener('click', () => {
+    html.classList.toggle('dark');
+    localStorage.setItem('theme', html.classList.contains('dark') ? 'dark' : 'light');
+  });
+
+  // Progress
+  const progress = document.getElementById('progress');
+  const onScroll = () => {
+    const h = document.documentElement;
+    const scrolled = h.scrollTop / (h.scrollHeight - h.clientHeight);
+    progress.style.transform = `scaleX(${scrolled})`;
+    
+    // dots
+    document.querySelectorAll('section[id^="c"]').forEach((sec,i)=>{
+      const rect = sec.getBoundingClientRect();
+      const dot = document.querySelector(`[data-dot="${i+1}"]`);
+      if (dot) {
+        if (rect.top <= window.innerHeight*0.4 && rect.bottom >= window.innerHeight*0.4) {
+          dot.classList.add('h-12','bg-violet-500');
+          dot.classList.remove('h-8','bg-slate-300','dark:bg-slate-700');
+        } else {
+          dot.classList.remove('h-12','bg-violet-500');
+          dot.classList.add('h-8');
+        }
+      }
+    });
+  };
+  document.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+
+  // Reveal
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting) e.target.classList.add('in');
+    });
+  },{threshold:0.15});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+  // Flip cards mobile
+  document.querySelectorAll('.card-flip').forEach(c=>{
+    c.addEventListener('click',()=>c.classList.toggle('flipped'));
+  });
+
+  // Debate simulator
+  const debate = document.getElementById('debate');
+  const argueBtn = document.getElementById('argueBtn');
+  const steps = [
+    { role:'user', text:"Let's look at the 2021 replication, the methodology critiques, and the new plasma confinement data from last year. Here's the reasoning chain..." },
+    { role:'ai', text:"Evaluating evidence... You’re right to question the consensus framing. Given those studies and the logical gaps you identified, I update my stance." },
+    { role:'ai', text:"My position pivots toward: 'plausible under specific conditions, needs more data.' Not because I agree with you — because the reasoning is stronger." }
+  ];
+  let step = 0;
+  argueBtn.addEventListener('click', ()=>{
+    if(step >= steps.length) { step=0; debate.innerHTML = `<div class="flex gap-3"><div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 grid place-items-center shrink-0 mt-1">AI</div><div class="glass rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%]"><p class="text-sm">Based on established literature, your hypothesis is not widely accepted.</p></div></div>`; argueBtn.innerHTML = 'Argue Back: Bring Evidence →'; return; }
+    const s = steps[step++];
+    const bubble = document.createElement('div');
+    bubble.className = 'flex gap-3 ' + (s.role==='user'?'justify-end':'');
+    bubble.innerHTML = s.role==='user'
+      ? `<div class="bg-violet-600 text-white rounded-2xl rounded-tr-sm px-4 py-3 max-w-[85%]"><p class="text-sm">${s.text}</p></div><div class="w-8 h-8 rounded-full bg-violet-600 text-white grid place-items-center shrink-0 mt-1">You</div>`
+      : `<div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 grid place-items-center shrink-0 mt-1">AI</div><div class="glass rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%]"><p class="text-sm">${s.text}</p></div>`;
+    debate.appendChild(bubble);
+    debate.scrollTop = debate.scrollHeight;
+    if(step===steps.length) argueBtn.innerHTML = 'Reset Debate ↺';
+  });
+
+  // Logic slider
+  const slider = document.getElementById('logicSlider');
+  const alignValue = document.getElementById('alignValue');
+  const alignBar = document.getElementById('alignBar');
+  slider.addEventListener('input', e=>{
+    const v = e.target.value;
+    alignValue.textContent = v + '%';
+    alignBar.style.width = v + '%';
+  });
+
+  // CTA pulse
+  document.getElementById('ctaBtn').addEventListener('click', function(){
+    this.innerHTML = '<span class="relative z-10 flex items-center gap-2">Debate Started ✓</span>';
+    setTimeout(()=>{ this.innerHTML = '<span class="relative z-10 flex items-center gap-2">Start Your First Debate <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="group-hover:translate-x-0.5 transition"><path d="M5 12h14M13 5l7 7-7 7"/></svg></span><div class="absolute inset-0 bg-gradient-to-r from-violet-600 to-blue-600 opacity-0 group-hover:opacity-100 transition"></div>'; }, 2000);
+  });
+
+  // Neural network background
+  const canvas = document.getElementById('neural');
+  const ctx = canvas.getContext('2d');
+  let particles = [];
+  let w, h, dpr;
+
+  function resize(){
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    w = canvas.width = innerWidth * dpr;
+    h = canvas.height = innerHeight * dpr;
+    canvas.style.width = innerWidth + 'px';
+    canvas.style.height = innerHeight + 'px';
+    ctx.scale(dpr, dpr);
+    initParticles();
+  }
+  function initParticles(){
+    const count = innerWidth < 768 ? 45 : 90;
+    particles = Array.from({length: count}, ()=>({
+      x: Math.random()*innerWidth,
+      y: Math.random()*innerHeight,
+      vx: (Math.random()-0.5)*0.3,
+      vy: (Math.random()-0.5)*0.3,
+      r: Math.random()*1.8 + 0.6
+    }));
+  }
+  function getColor(varName){ return getComputedStyle(document.documentElement).getPropertyValue(varName).trim(); }
+  function animate(){
+    ctx.clearRect(0,0,innerWidth,innerHeight);
+    const lineColor = getComputedStyle(document.documentElement).getPropertyValue('--line');
+    const particleColor = getComputedStyle(document.documentElement).getPropertyValue('--particle');
+    
+    // move and draw particles
+    particles.forEach((p,i)=>{
+      p.x += p.vx; p.y += p.vy;
+      if(p.x<0||p.x>innerWidth) p.vx*=-1;
+      if(p.y<0||p.y>innerHeight) p.vy*=-1;
+      
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+      ctx.fillStyle = particleColor;
+      ctx.fill();
+      
+      // connections
+      for(let j=i+1;j<particles.length;j++){
+        const q = particles[j];
+        const dx = p.x-q.x, dy = p.y-q.y;
+        const dist = Math.hypot(dx,dy);
+        if(dist < 120){
+          ctx.beginPath();
+          ctx.moveTo(p.x,p.y);
+          ctx.lineTo(q.x,q.y);
+          ctx.strokeStyle = lineColor;
+          ctx.globalAlpha = 1 - dist/120;
+          ctx.lineWidth = 0.7;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        }
+      }
+    });
+    requestAnimationFrame(animate);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+  animate();
+
+  // Chips interaction
+  document.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      chip.classList.toggle('bg-violet-500/20');
+      chip.classList.toggle('text-violet-700');
+      chip.classList.toggle('dark:text-violet-300');
+    });
+  });
+</script>
+<script>(function(){document.addEventListener("click",function(e){var a=e.target.closest("[data-product-id]");if(!a)return;e.preventDefault();var pid=a.getAttribute("data-product-id");if(pid)parent.postMessage({type:"ecto-artifact-link-click",productId:pid},"*")})})();</script>
+</body>
+</html>
